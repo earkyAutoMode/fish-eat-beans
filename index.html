@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鱼吃豆豆游戏 (Fish Eat Beans)</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="start-screen" class="overlay">
+                <h1>鱼吃豆豆</h1>
+                <p>控制小鱼吃豆豆，避开边界和障碍！</p>
+                <p>操作：鼠标移动或键盘方向键</p>
+                <button id="start-btn">开始游戏</button>
+            </div>
+            <div id="game-over-screen" class="overlay hidden">
+                <h1>游戏结束</h1>
+                <p>得分：<span id="final-score">0</span></p>
+                <button id="restart-btn">重新开始</button>
+            </div>
+            <div id="hud">
+                <div id="score-board">分数: 0</div>
+                <div id="lives-board">生命: 3</div>
+            </div>
+        </div>
+    </div>
+    <script src="js/game.js"></script>
+</body>
+</html>
