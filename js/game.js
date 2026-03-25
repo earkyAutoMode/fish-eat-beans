@@ -144,115 +144,114 @@ class Obstacle {
 
     reset() {
         this.x = Math.random() * (canvas.width - this.radius * 4) + this.radius * 2;
-        this.y = Math.random() * (canvas.height - this.radius * 4) + this.radius * 2;
+        this1秒无敌
+        updateHUD();
+        if (lives <= 0) endGame();
+        else {
+            // 缩小一点点，作为惩罚
+            this.level = Math.max(1, this.level - 1);
+        }
+    }
+
+    takeFatalDamage() {
+        lives = 0;
+        updateHUD();
+        endGame();
     }
 
     draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.direction);
+
+        // 无敌闪烁
+        if (this.invulnerable > 0 && Math.floor(this.invulnerable / 5) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+
+        // 画鱼身
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ff4d6d';
+        ctx.arc(0, 0, this.radius, this.mouthOpen * Math.PI, (2 - this.mouthOpen) * Math.PI);
+        ctx.lineTo(0, 0);
+        ctx.fillStyle = this.color;
         ctx.fill();
-        ctx.strokeStyle = '#c9184a';
-        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
         ctx.stroke();
         ctx.closePath();
+
+        // 眼睛
+        ctx.beginPath();
+        ctx.arc(this.radius * 0.5, -this.radius * 0.4, this.radius * 0.15, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(this.radius * 0.55, -this.radius * 0.4, this.radius * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+class NPCFish {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        // 等级在玩家等级 +/- 3 之间浮动
+        this.level = Math.max(1, Math.floor(player.level + (Math.random() * 8 - 4)));
+        this.radius = PLAYER_BASE_RADIUS + (this.level - 1) * LEVEL_GROW_FACTOR;
+        this.color = COLORS[this.level % COLORS.length];
+        this.speed = 1 + Math.random() * 2;
+        
+        // 从两侧进入
+        if (Math.random() > 0.5) {
+            this.x = -this.radius - 20;
+            this.direction = 0;
+        } else {
+            this.x = canvas.width + this.radius + 20;
+            this.direction = Math.PI;
+        }
+        this.y = Math.random() * (canvas.height - 40) + 20;
+    }
+
+    update() {
+        this.x += Math.cos(this.direction) * this.speed;
+        // 稍微有点上下波动
+        this.y += Math.sin(Date.now() / 500) * 0.5;
+
+        // 出界重置
+        if (this.x < -100 || this.x > canvas.width + 100) this.reset();
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        if (this.direction === Math.PI) ctx.scale(1, -1); // 掉头时镜像
+        ctx.rotate(this.direction);
+
+        // 简易鱼形
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.radius * 1.2, this.radius, 0, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.stroke();
+
+        // 尾巴
+        ctx.beginPath();
+        ctx.moveTo(-this.radius * 1, 0);
+        ctx.lineTo(-this.radius * 1.8, -this.radius * 0.8);
+        ctx.lineTo(-this.radius * 1.8, this.radius * 0.8);
+        ctx.fill();
+
+        ctx.restore();
     }
 }
 
 let player = new Fish();
-let beans = [new Bean(), new Bean(), new Bean(), new Bean(), new Bean()];
-let obstacles = [new Obstacle(), new Obstacle()];
+let npcs = [];
 
-// 控制器
-window.addEventListener('mousemove', (e) => {
-    if (gameState !== 'PLAYING') return;
-    const rect = canvas.getBoundingClientRect();
-    player.targetX = e.clientX - rect.left;
-    player.targetY = e.clientY - rect.top;
-    player.isMouseControl = true;
-});
-
-window.addEventListener('keydown', (e) => {
-    if (gameState !== 'PLAYING') return;
-    player.isMouseControl = false;
-    switch(e.key) {
-        case 'ArrowUp': player.direction = -Math.PI / 2; break;
-        case 'ArrowDown': player.direction = Math.PI / 2; break;
-        case 'ArrowLeft': player.direction = Math.PI; break;
-        case 'ArrowRight': player.direction = 0; break;
-    }
-});
-
-function updateHUD() {
-    scoreBoard.innerText = `得分: ${score}`;
-    livesBoard.innerText = `生命: ${lives}`;
-}
-
-function startGame() {
-    gameState = 'PLAYING';
-    score = 0;
-    lives = 3;
-    player = new Fish(); // 重新创建玩家以重置所有属性
-    beans.forEach(b => b.reset());
-    obstacles.forEach(o => o.reset());
-    updateHUD();
-    startScreen.classList.add('hidden');
-    gameOverScreen.classList.add('hidden');
-    gameLoop();
-}
-
-function endGame() {
-    gameState = 'GAMEOVER';
-    cancelAnimationFrame(animationId);
-    finalScree.innerText = score;
-    gameOverScreen.classList.remove('hidden');
-}
-
-function checkCollision(obj1, obj2) {
-    const dx = obj1.x - obj2.x;
-    const dy = obj1.y - obj2.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < obj1.radius + obj2.radius;
-}
-
-function gameLoop() {
-    if (gameState !== 'PLAYING') return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 绘制背景（每一帧都要画，否则清除后是透明的）
-    ctx.fillStyle = '#1b263b';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 更新和绘制玩家
-    player.update();
-    player.draw();
-
-    // 处理豆豆
-    beans.forEach(bean => {
-        bean.draw();
-        if (checkCollision(player, bean)) {
-            score += 10;
-            updateHUD();
-            bean.reset();
-        }
-    });
-
-    // 处理障碍物
-    obstacles.forEach(obstacle => {
-        obstacle.draw();
-        if (checkCollision(player, obstacle)) {
-            player.takeDamage();
-            obstacle.reset();
-        }
-    });
-
-    animationId = requestAnimationFrame(gameLoop);
-}
-
-startBtn.onclick = startGame;
-restartBtn.onclick = startGame;
-
-// 初始绘制背景
-ctx.fillStyle = '#1b263b';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+functi
