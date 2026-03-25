@@ -24,25 +24,30 @@ class Fish {
         this.y = canvas.height / 2;
         this.radius = 20;
         this.color = '#778da9';
-        this.speed = 5;
-        this.targetX = this.x;
-        this.targetY = this.y;
+        this.speed = 3; // 基础前进速度
+        this.direction = 0; // 弧度
         this.mouthOpen = 0.2;
         this.mouthSpeed = 0.05;
-        this.direction = 0; // 弧度
+        this.targetX = this.x;
+        this.targetY = this.y;
+        this.isMouseControl = false;
     }
 
     update() {
-        // 移动逻辑（平滑追踪目标）
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        if (dist > 5) {
-            this.x += (dx / dist) * this.speed;
-            this.y += (dy / dist) * this.speed;
-            this.direction = Math.atan2(dy, dx);
+        // 如果是鼠标控制，根据鼠标位置更新方向
+        if (this.isMouseControl) {
+            const dx = this.targetX - this.x;
+            const dy = this.targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+                this.direction = Math.atan2(dy, dx);
+            }
         }
+
+        // 无论是否有输入，小鱼始终沿当前方向前进
+        this.x += Math.cos(this.direction) * this.speed;
+        this.y += Math.sin(this.direction) * this.speed;
 
         // 嘴部动画
         this.mouthOpen += this.mouthSpeed;
@@ -58,7 +63,7 @@ class Fish {
         if (this.x - this.radius < 0 || this.x + this.radius > canvas.width ||
             this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
             
-            // 碰到边界，扣除生命并复位
+            // 撞到边界，扣除生命并复位
             this.takeDamage();
         }
     }
@@ -77,6 +82,8 @@ class Fish {
         this.y = canvas.height / 2;
         this.targetX = this.x;
         this.targetY = this.y;
+        // 复位时不改变方向，让它继续按最后的方向（或默认方向）走
+        this.isMouseControl = false; 
     }
 
     draw() {
@@ -162,21 +169,22 @@ window.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     player.targetX = e.clientX - rect.left;
     player.targetY = e.clientY - rect.top;
+    player.isMouseControl = true;
 });
 
 window.addEventListener('keydown', (e) => {
     if (gameState !== 'PLAYING') return;
-    const step = 20;
+    player.isMouseControl = false;
     switch(e.key) {
-        case 'ArrowUp': player.targetY -= step; break;
-        case 'ArrowDown': player.targetY += step; break;
-        case 'ArrowLeft': player.targetX -= step; break;
-        case 'ArrowRight': player.targetX += step; break;
+        case 'ArrowUp': player.direction = -Math.PI / 2; break;
+        case 'ArrowDown': player.direction = Math.PI / 2; break;
+        case 'ArrowLeft': player.direction = Math.PI; break;
+        case 'ArrowRight': player.direction = 0; break;
     }
 });
 
 function updateHUD() {
-    scoreBoard.innerText = `分数: ${score}`;
+    scoreBoard.innerText = `得分: ${score}`;
     livesBoard.innerText = `生命: ${lives}`;
 }
 
@@ -184,7 +192,7 @@ function startGame() {
     gameState = 'PLAYING';
     score = 0;
     lives = 3;
-    player.resetPosition();
+    player = new Fish(); // 重新创建玩家以重置所有属性
     beans.forEach(b => b.reset());
     obstacles.forEach(o => o.reset());
     updateHUD();
@@ -196,7 +204,7 @@ function startGame() {
 function endGame() {
     gameState = 'GAMEOVER';
     cancelAnimationFrame(animationId);
-    finalScore.innerText = score;
+    finalScree.innerText = score;
     gameOverScreen.classList.remove('hidden');
 }
 
@@ -211,6 +219,10 @@ function gameLoop() {
     if (gameState !== 'PLAYING') return;
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制背景（每一帧都要画，否则清除后是透明的）
+    ctx.fillStyle = '#1b263b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // 更新和绘制玩家
     player.update();
